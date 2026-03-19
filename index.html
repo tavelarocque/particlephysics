@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Particle Physics Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #050508;
+    --panel: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.07);
+    --text: #e8eaf0;
+    --muted: rgba(232,234,240,0.4);
+    --cyan: #00e5ff;
+    --orange: #ff6b35;
+    --green: #39ff14;
+    --pink: #ff2d78;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(5,5,8,0.9);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--cyan);
+  }
+
+  .logo span { color: var(--muted); font-weight: 400; }
+
+  .stats-row {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  .stat-lbl {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  /* Canvas Area */
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+  }
+
+  /* Side Panel */
+  .panel {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    width: 220px;
+    background: rgba(5,5,8,0.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(16px);
+    z-index: 5;
+  }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .control-group {
+    margin-bottom: 16px;
+  }
+
+  .control-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+
+  .control-label span {
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    font-size: 0.75rem;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--cyan);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,229,255,0.5);
+    transition: transform 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* Mode Buttons */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .mode-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 6px;
+    color: var(--muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .mode-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .mode-btn.active {
+    background: rgba(0,229,255,0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* Action Buttons */
+  .action-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    color: var(--muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .action-btn:hover {
+    background: rgba(255,107,53,0.1);
+    border-color: var(--orange);
+    color: var(--orange);
+  }
+
+  .action-btn.green:hover {
+    background: rgba(57,255,20,0.08);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* Hint */
+  .hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(5,5,8,0.8);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 18px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: fadeHint 4s ease forwards;
+  }
+
+  @keyframes fadeHint {
+    0%, 60% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* Color Palette Selector */
+  .palette-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .color-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+
+  .color-dot:hover { transform: scale(1.2); }
+  .color-dot.active { border-color: white; transform: scale(1.15); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">PARTICLE<span>.SIM</span></div>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-val" id="stat-count">0</div>
+      <div class="stat-lbl">Particles</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-fps">60</div>
+      <div class="stat-lbl">FPS</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-energy">0</div>
+      <div class="stat-lbl">Avg Speed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-collisions">0</div>
+      <div class="stat-lbl">Collisions</div>
+    </div>
+  </div>
+  <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace;">Click to spawn · Drag to attract</div>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="canvas"></canvas>
+
+  <div class="panel">
+    <div class="panel-title">⚙ Controls</div>
+
+    <div class="control-group">
+      <div class="control-label">Gravity <span id="lbl-gravity">0.0</span></div>
+      <input type="range" id="sl-gravity" min="-0.5" max="0.5" step="0.01" value="0.08">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">Particle Size <span id="lbl-size">4</span></div>
+      <input type="range" id="sl-size" min="1" max="12" step="0.5" value="4">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">Spawn Speed <span id="lbl-speed">3</span></div>
+      <input type="range" id="sl-speed" min="0.5" max="10" step="0.5" value="3">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">Bounce <span id="lbl-bounce">0.75</span></div>
+      <input type="range" id="sl-bounce" min="0.1" max="1.0" step="0.05" value="0.75">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">Friction <span id="lbl-friction">0.99</span></div>
+      <input type="range" id="sl-friction" min="0.85" max="1.0" step="0.005" value="0.99">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-title">Mode</div>
+    <div class="mode-grid">
+      <button class="mode-btn active" data-mode="spawn">Spawn</button>
+      <button class="mode-btn" data-mode="attract">Attract</button>
+      <button class="mode-btn" data-mode="repel">Repel</button>
+      <button class="mode-btn" data-mode="vortex">Vortex</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-title">Color</div>
+    <div class="palette-row" id="palette-row">
+      <div class="color-dot active" data-color="cyan" style="background:#00e5ff"></div>
+      <div class="color-dot" data-color="orange" style="background:#ff6b35"></div>
+      <div class="color-dot" data-color="green" style="background:#39ff14"></div>
+      <div class="color-dot" data-color="pink" style="background:#ff2d78"></div>
+      <div class="color-dot" data-color="white" style="background:#ffffff"></div>
+      <div class="color-dot" data-color="rainbow" style="background:conic-gradient(red,yellow,green,cyan,blue,magenta,red)"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="action-btn green" id="btn-explode">💥 Explode All</button>
+    <button class="action-btn" id="btn-clear">✕ Clear</button>
+  </div>
+
+  <div class="hint" id="hint">Click anywhere to spawn particles · Drag to use force modes</div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// ─── Resize ──────────────────────────────────────────
+function resize() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── State ───────────────────────────────────────────
+let particles = [];
+let mouse = { x: 0, y: 0, down: false };
+let mode = 'spawn';
+let colorMode = 'cyan';
+let collisionCount = 0;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let fps = 60;
+
+const colorMap = {
+  cyan:    () => '#00e5ff',
+  orange:  () => '#ff6b35',
+  green:   () => '#39ff14',
+  pink:    () => '#ff2d78',
+  white:   () => '#ffffff',
+  rainbow: () => {
+    const h = Math.random() * 360, s = 1, l = 0.65;
+    const c = (1 - Math.abs(2*l - 1)) * s, x = c * (1 - Math.abs((h/60)%2 - 1)), m = l - c/2;
+    let r, g, b;
+    if (h < 60) { r=c; g=x; b=0; } else if (h < 120) { r=x; g=c; b=0; }
+    else if (h < 180) { r=0; g=c; b=x; } else if (h < 240) { r=0; g=x; b=c; }
+    else if (h < 300) { r=x; g=0; b=c; } else { r=c; g=0; b=x; }
+    const toHex = v => Math.round((v+m)*255).toString(16).padStart(2,'0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+};
+
+// Controls
+let G = 0.08, PSIZE = 4, SPEED = 3, BOUNCE = 0.75, FRICTION = 0.99;
+
+function getSlider(id) { return parseFloat(document.getElementById(id).value); }
+
+function syncControls() {
+  G        = getSlider('sl-gravity');
+  PSIZE    = getSlider('sl-size');
+  SPEED    = getSlider('sl-speed');
+  BOUNCE   = getSlider('sl-bounce');
+  FRICTION = getSlider('sl-friction');
+
+  document.getElementById('lbl-gravity').textContent = G.toFixed(2);
+  document.getElementById('lbl-size').textContent    = PSIZE.toFixed(1);
+  document.getElementById('lbl-speed').textContent   = SPEED.toFixed(1);
+  document.getElementById('lbl-bounce').textContent  = BOUNCE.toFixed(2);
+  document.getElementById('lbl-friction').textContent= FRICTION.toFixed(3);
+}
+
+['sl-gravity','sl-size','sl-speed','sl-bounce','sl-friction'].forEach(id => {
+  document.getElementById(id).addEventListener('input', syncControls);
+});
+syncControls();
+
+// ─── Particle Class ───────────────────────────────────
+class Particle {
+  constructor(x, y) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = (Math.random() * 0.5 + 0.5) * SPEED;
+    this.x  = x;
+    this.y  = y;
+    this.vx = Math.cos(angle) * spd;
+    this.vy = Math.sin(angle) * spd;
+    this.r  = PSIZE * (0.6 + Math.random() * 0.8);
+    this.color = colorMap[colorMode]();
+    this.trail = [];
+    this.life = 1;
+    this.age = 0;
+  }
+
+  update() {
+    this.age++;
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > 8) this.trail.shift();
+
+    // Gravity
+    this.vy += G;
+
+    // Friction
+    this.vx *= FRICTION;
+    this.vy *= FRICTION;
+
+    // Mouse interaction
+    if (mouse.down && mode !== 'spawn') {
+      const dx = mouse.x - this.x;
+      const dy = mouse.y - this.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const force = Math.min(150 / (dist * dist), 3);
+
+      if (mode === 'attract') {
+        this.vx += (dx/dist) * force;
+        this.vy += (dy/dist) * force;
+      } else if (mode === 'repel') {
+        this.vx -= (dx/dist) * force * 1.5;
+        this.vy -= (dy/dist) * force * 1.5;
+      } else if (mode === 'vortex') {
+        this.vx += (-dy/dist) * force;
+        this.vy += (dx/dist) * force;
+      }
+    }
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Wall bounce
+    if (this.x - this.r < 0) { this.x = this.r; this.vx *= -BOUNCE; }
+    if (this.x + this.r > canvas.width) { this.x = canvas.width - this.r; this.vx *= -BOUNCE; }
+    if (this.y - this.r < 0) { this.y = this.r; this.vy *= -BOUNCE; }
+    if (this.y + this.r > canvas.height) { this.y = canvas.height - this.r; this.vy *= -BOUNCE; }
+  }
+
+  draw() {
+    // Trail
+    if (this.trail.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) {
+        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+      }
+      ctx.strokeStyle = this.color + '33';
+      ctx.lineWidth = this.r * 0.6;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Glow
+    const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 2.5);
+    grd.addColorStop(0, this.color + 'cc');
+    grd.addColorStop(1, this.color + '00');
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    // Core
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
+
+  speed() {
+    return Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+  }
+}
+
+// ─── Spawn ────────────────────────────────────────────
+function spawnAt(x, y, count = 1) {
+  for (let i = 0; i < count; i++) {
+    if (particles.length < 800) {
+      particles.push(new Particle(x, y));
+    }
+  }
+}
+
+// ─── Collisions (spatial grid) ───────────────────────
+function resolveCollisions() {
+  const cellSize = 30;
+  const grid = {};
+
+  for (const p of particles) {
+    const cx = Math.floor(p.x / cellSize);
+    const cy = Math.floor(p.y / cellSize);
+    const key = `${cx},${cy}`;
+    if (!grid[key]) grid[key] = [];
+    grid[key].push(p);
+  }
+
+  for (const p of particles) {
+    const cx = Math.floor(p.x / cellSize);
+    const cy = Math.floor(p.y / cellSize);
+    for (let nx = cx-1; nx <= cx+1; nx++) {
+      for (let ny = cy-1; ny <= cy+1; ny++) {
+        const neighbors = grid[`${nx},${ny}`];
+        if (!neighbors) continue;
+        for (const q of neighbors) {
+          if (p === q) continue;
+          const dx = q.x - p.x;
+          const dy = q.y - p.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const minDist = p.r + q.r;
+          if (dist < minDist && dist > 0) {
+            collisionCount++;
+            const nx2 = dx/dist, ny2 = dy/dist;
+            const overlap = (minDist - dist) / 2;
+            p.x -= nx2 * overlap; p.y -= ny2 * overlap;
+            q.x += nx2 * overlap; q.y += ny2 * overlap;
+            const dvx = p.vx - q.vx, dvy = p.vy - q.vy;
+            const dot = dvx*nx2 + dvy*ny2;
+            if (dot > 0) {
+              p.vx -= dot * nx2 * BOUNCE;
+              p.vy -= dot * ny2 * BOUNCE;
+              q.vx += dot * nx2 * BOUNCE;
+              q.vy += dot * ny2 * BOUNCE;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ─── Mouse Force Visualizer ───────────────────────────
+function drawMouseForce() {
+  if (!mouse.down || mode === 'spawn') return;
+  const colors = { attract: '#00e5ff', repel: '#ff6b35', vortex: '#ff2d78' };
+  const col = colors[mode] || '#fff';
+  const radius = 120;
+
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, radius, 0, Math.PI*2);
+  ctx.strokeStyle = col + '33';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 5, 0, Math.PI*2);
+  ctx.fillStyle = col;
+  ctx.fill();
+
+  // Glow
+  const grd = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, radius);
+  grd.addColorStop(0, col + '22');
+  grd.addColorStop(1, col + '00');
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, radius, 0, Math.PI*2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+}
+
+// ─── Main Loop ────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+
+  // FPS
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 500) {
+    fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
+    frameCount = 0;
+    lastFpsTime = now;
+    document.getElementById('stat-fps').textContent = fps;
+  }
+
+  // Fade trail
+  ctx.fillStyle = 'rgba(5,5,8,0.18)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Spawn on hold
+  if (mouse.down && mode === 'spawn') {
+    spawnAt(mouse.x, mouse.y, 2);
+  }
+
+  resolveCollisions();
+
+  for (const p of particles) {
+    p.update();
+    p.draw();
+  }
+
+  drawMouseForce();
+
+  // Stats
+  document.getElementById('stat-count').textContent = particles.length;
+  if (particles.length > 0) {
+    const avgSpeed = particles.reduce((s, p) => s + p.speed(), 0) / particles.length;
+    document.getElementById('stat-energy').textContent = avgSpeed.toFixed(1);
+  }
+  document.getElementById('stat-collisions').textContent = collisionCount > 9999 ? '9999+' : collisionCount;
+}
+
+loop();
+
+// ─── Input ────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  mouse.down = true;
+  mouse.x = e.offsetX;
+  mouse.y = e.offsetY;
+  if (mode === 'spawn') spawnAt(e.offsetX, e.offsetY, 5);
+});
+
+canvas.addEventListener('mousemove', e => {
+  mouse.x = e.offsetX;
+  mouse.y = e.offsetY;
+});
+
+canvas.addEventListener('mouseup', () => { mouse.down = false; });
+canvas.addEventListener('mouseleave', () => { mouse.down = false; });
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  mouse.down = true;
+  mouse.x = t.clientX - rect.left;
+  mouse.y = t.clientY - rect.top;
+  if (mode === 'spawn') spawnAt(mouse.x, mouse.y, 5);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = t.clientX - rect.left;
+  mouse.y = t.clientY - rect.top;
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { mouse.down = false; });
+
+// Mode buttons
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+  });
+});
+
+// Color dots
+document.querySelectorAll('.color-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    colorMode = dot.dataset.color;
+  });
+});
+
+// Explode
+document.getElementById('btn-explode').addEventListener('click', () => {
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  for (const p of particles) {
+    const dx = p.x - cx, dy = p.y - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    const force = 15 + Math.random() * 10;
+    p.vx += (dx/dist) * force;
+    p.vy += (dy/dist) * force;
+  }
+});
+
+// Clear
+document.getElementById('btn-clear').addEventListener('click', () => {
+  particles = [];
+  collisionCount = 0;
+});
+
+// Spawn initial burst
+setTimeout(() => {
+  for (let i = 0; i < 60; i++) {
+    spawnAt(
+      canvas.width/2 + (Math.random()-0.5)*200,
+      canvas.height/2 + (Math.random()-0.5)*200,
+      1
+    );
+  }
+}, 100);
+
+// Hint fade
+setTimeout(() => {
+  const h = document.getElementById('hint');
+  if (h) h.remove();
+}, 5000);
+</script>
+</body>
+</html>
